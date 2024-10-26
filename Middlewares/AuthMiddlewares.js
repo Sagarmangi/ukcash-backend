@@ -27,6 +27,7 @@ module.exports.checkUser = (req, res, next) => {
             firstName: user.firstName,
             lastName: user.lastName,
             role: user.role,
+            accountStatus: user.accountStatus,
           });
         else res.json({ status: false });
         next();
@@ -183,10 +184,7 @@ module.exports.submissions = async (req, res, next) => {
 
     if (token) {
       try {
-        const submissions = await Submission.find().populate(
-          "user",
-          "username firstName lastName"
-        );
+        const submissions = await Submission.find().populate("user");
         res.json(submissions);
       } catch (err) {
         console.error(err);
@@ -440,7 +438,7 @@ module.exports.withdrawHistory = async (req, res, next) => {
   }
 };
 
-module.exports.updateUser = async (req, res, next) => {
+module.exports.updateUser = async (req, res) => {
   try {
     const token = req.cookies.jwt;
     if (!token) {
@@ -454,23 +452,42 @@ module.exports.updateUser = async (req, res, next) => {
         return res
           .status(401)
           .json({ status: false, message: "Unauthorized access" });
-      } else {
       }
 
-      try {
-        const { username } = req.params;
-
-        // Find all submissions of type 'withdrawal' for the current user
-        const withdrawals = await Submission.find({
-          user: decodedToken.id,
-          type: "withdrawal",
-        }).sort({ createdAt: -1 });
-
-        res.json(withdrawals);
-      } catch (error) {
-        console.error("Error fetching withdrawal history:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+      const requestingUser = await User.findById(decodedToken.id);
+      if (!requestingUser || requestingUser.role !== "admin") {
+        return res
+          .status(403)
+          .json({ status: false, message: "Insufficient permissions" });
       }
+
+      const { username } = req.params;
+      const { firstName, lastName, role, accountStatus } = req.body;
+
+      // Update the user
+      const updatedUser = await User.findOneAndUpdate(
+        { username },
+        { firstName, lastName, role, accountStatus },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return res
+          .status(404)
+          .json({ status: false, message: "User not found" });
+      }
+
+      res.status(200).json({
+        status: true,
+        message: "User updated successfully",
+        user: {
+          username: updatedUser.username,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role: updatedUser.role,
+          accountStatus: updatedUser.accountStatus,
+        },
+      });
     });
   } catch (err) {
     console.error("Error updating user", err);
@@ -559,6 +576,61 @@ module.exports.deleteNotification = async (req, res, next) => {
     });
   } catch (err) {
     console.error("Error deleting notification", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+module.exports.getTransactions = async (req, res, next) => {
+  try {
+    const token = req.cookies.jwt;
+
+    if (token) {
+      jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
+        if (err) {
+          return res
+            .status(401)
+            .json({ status: false, message: "Unauthorized access" });
+        }
+
+        try {
+          const userId = decodedToken.id;
+
+          // Fetch all submissions for this user
+          const submissions = await Submission.find({ user: userId });
+
+          // Calculate totals for deposits and withdrawals
+          const totalDeposit = submissions
+            .filter(
+              (submission) =>
+                submission.type === "deposit" &&
+                submission.status === "approved"
+            )
+            .reduce((sum, submission) => sum + submission.amount, 0);
+
+          const totalWithdraw = submissions
+            .filter(
+              (submission) =>
+                submission.type === "withdrawal" &&
+                submission.status === "approved"
+            )
+            .reduce((sum, submission) => sum + submission.amount, 0);
+
+          // Send the calculated totals to the frontend
+          res.json({
+            status: true,
+            totalDeposit,
+            totalWithdraw,
+          });
+        } catch (error) {
+          console.error("Error fetching transactions:", error);
+          res.status(500).json({ error: "Internal Server Error" });
+        }
+      });
+    } else {
+      res.status(401).json({ status: false, message: "Unauthorized access" });
+    }
+  } catch (err) {
+    console.error("Error Fetching transactions", err);
     res.status(500).json({ error: "Internal server error." });
   }
 };

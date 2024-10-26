@@ -16,6 +16,7 @@ const {
   updateUser,
   notifications,
   deleteNotification,
+  getTransactions,
 } = require("../Middlewares/AuthMiddlewares");
 
 const router = require("express").Router();
@@ -42,6 +43,7 @@ router.delete("/submissions/:id", deleteSubmission);
 router.get("/account-details", getAccountDetails);
 router.post("/account-details", updateAccountDetails);
 router.get("/get-users", getUsers);
+router.get("/transactions", getTransactions);
 router.delete("/users/:username", deleteUsers);
 router.put("/users/:username", updateUser);
 router.get("/submissions/:username", depositHistory);
