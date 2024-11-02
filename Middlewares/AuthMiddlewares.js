@@ -4,6 +4,7 @@ const User = require("../Models/UserModel");
 const Submission = require("../Models/SubmissionModel");
 const AccountDetails = require("../Models/AccountDetailsModel");
 const Notification = require("../Models/NotificationModel");
+const ButtonLinksModel = require("../Models/ButtonLinksModel");
 
 module.exports.checkUser = (req, res, next) => {
   const token = req.cookies.jwt;
@@ -632,5 +633,86 @@ module.exports.getTransactions = async (req, res, next) => {
   } catch (err) {
     console.error("Error Fetching transactions", err);
     res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+module.exports.getButtonLinks = async (req, res, next) => {
+  try {
+    const token = req.cookies.jwt;
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized access" });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
+      if (err) {
+        return res
+          .status(401)
+          .json({ status: false, message: "Unauthorized access" });
+      }
+
+      try {
+        const buttonLinks = await ButtonLinksModel.findOne();
+        if (!buttonLinks) {
+          return res
+            .status(404)
+            .json({ status: false, message: "Links not found" });
+        }
+
+        res.json({ status: true, buttonLinks });
+      } catch (error) {
+        console.error("Error fetching button links:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching button links:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Route to update the button links
+module.exports.updateButtonLinks = async (req, res, next) => {
+  try {
+    const token = req.cookies.jwt;
+
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized access" });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, decodedToken) => {
+      if (err) {
+        return res
+          .status(401)
+          .json({ status: false, message: "Unauthorized access" });
+      }
+
+      try {
+        const { linkOne, linkTwo } = req.body;
+
+        // Find and update or create new links entry
+        const buttonLinks = await ButtonLinksModel.findOneAndUpdate(
+          {},
+          { linkOne, linkTwo },
+          { new: true, upsert: true }
+        );
+
+        res.json({
+          status: true,
+          message: "Links updated successfully",
+          buttonLinks,
+        });
+      } catch (error) {
+        console.error("Error updating button links:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+  } catch (error) {
+    console.error("Error updating button links:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };

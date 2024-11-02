@@ -17,6 +17,8 @@ const {
   notifications,
   deleteNotification,
   getTransactions,
+  getButtonLinks,
+  updateButtonLinks,
 } = require("../Middlewares/AuthMiddlewares");
 
 const router = require("express").Router();
@@ -50,5 +52,7 @@ router.get("/submissions/:username", depositHistory);
 router.get("/submissions/w/:username", withdrawHistory);
 router.get("/notifications", notifications);
 router.delete("/delete-notification/:id", deleteNotification);
+router.get("/get-btn-links", getButtonLinks);
+router.post("/btn-link-edit", updateButtonLinks);
 
 module.exports = router;
