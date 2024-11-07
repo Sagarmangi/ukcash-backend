@@ -11,18 +11,15 @@ const createToken = (id) => {
 };
 
 const handleErrors = (err) => {
-  let errors = { email: "", password: "" };
-  if (err.message === "incorrect email") {
-    errors.email = "Email Address is not registered";
-  }
-  if (err.message === "incorrect Password") {
-    errors.password = "Password is incorrect";
+  let errors = { phoneNumber: "", password: "" };
+  if (err.message === "incorrect phone number") {
+    errors.phoneNumber = "Phone number is not registered";
   }
   if (err.message === "incorrect password") {
-    errors.password = "That password is incorrect";
+    errors.password = "Password is incorrect";
   }
   if (err.code === 11000) {
-    errors.email = "Email is already registered";
+    errors.phoneNumber = "Phone number is already registered";
     return errors;
   }
   if (err.message.includes("Users validation failed")) {
@@ -35,25 +32,25 @@ const handleErrors = (err) => {
 
 module.exports.register = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
-    const username = email.split("@")[0];
+    const { firstName, lastName, phoneNumber, password } = req.body;
+    const username = phoneNumber; // Using phone number as a unique identifier for username
 
     const user = await UserModel.create({
       firstName,
       lastName,
-      email,
+      phoneNumber,
       password,
-      username, // Add the username field here
+      username,
     });
     const token = createToken(user._id);
-    const notification = `A new Account has been created`;
+    const notification = `A new account has been created`;
 
     const newNotification = new Notification({
       type: "account creation",
       notification: notification,
     });
 
-    const savedNotification = await newNotification.save();
+    await newNotification.save();
 
     res.cookie("jwt", token, {
       withCredentials: true,
@@ -77,9 +74,9 @@ module.exports.register = async (req, res, next) => {
 };
 
 module.exports.login = async (req, res, next) => {
-  const { email, password } = req.body;
+  const { phoneNumber, password } = req.body;
   try {
-    const user = await UserModel.login(email, password);
+    const user = await UserModel.login(phoneNumber, password);
 
     const token = createToken(user._id);
 

@@ -4,9 +4,9 @@ const bcrypt = require("bcrypt");
 const userSchema = new mongoose.Schema({
   firstName: String,
   lastName: String,
-  email: {
+  phoneNumber: {
     type: String,
-    required: [true, "Email is required"],
+    required: [true, "Phone number is required"],
     unique: true,
   },
   username: {
@@ -65,16 +65,16 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-userSchema.statics.login = async function (email, password) {
-  const user = await this.findOne({ email });
+userSchema.statics.login = async function (phoneNumber, password) {
+  const user = await this.findOne({ phoneNumber });
   if (user) {
     const auth = await bcrypt.compare(password, user.password);
     if (auth) {
       return user;
     }
-    throw Error("incorrect password");
+    throw Error("Incorrect password");
   }
-  throw Error("incorrect email");
+  throw Error("Incorrect phone number");
 };
 
 module.exports = mongoose.model("User", userSchema);

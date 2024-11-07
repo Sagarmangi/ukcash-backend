@@ -23,7 +23,7 @@ module.exports.checkUser = (req, res, next) => {
         if (user)
           res.json({
             status: true,
-            email: user.email,
+            phoneNumber: user.phoneNumber,
             username: user.username,
             firstName: user.firstName,
             lastName: user.lastName,
@@ -59,7 +59,6 @@ module.exports.deposit = async (req, res, next) => {
           next();
         } else {
           const user = await User.findById(decodedToken.id);
-
           const userId = decodedToken.id;
 
           if (!paymentMethod || !amount || !file) {
@@ -72,7 +71,7 @@ module.exports.deposit = async (req, res, next) => {
             user: userId,
             type: "deposit",
             username: user.username,
-            email: user.email,
+            phoneNumber: user.phoneNumber, // Change to phoneNumber
             amount,
             paymentMethod,
             file,
@@ -85,7 +84,7 @@ module.exports.deposit = async (req, res, next) => {
             notification: notification,
           });
 
-          const savedNotification = await newNotification.save();
+          await newNotification.save();
 
           // Save the submission
           const savedSubmission = await newSubmission.save();
@@ -139,7 +138,7 @@ module.exports.withdraw = async (req, res, next) => {
             user: userId,
             type: "withdrawal",
             username: user.username,
-            email: user.email,
+            phoneNumber: user.phoneNumber, // Change to phoneNumber
             amount,
             paymentGateway,
             bankName,
@@ -157,7 +156,7 @@ module.exports.withdraw = async (req, res, next) => {
             notification: notification,
           });
 
-          const savedNotification = await newNotification.save();
+          await newNotification.save();
 
           // Add submission to user's submissions array
           user.submissions.push(savedSubmission._id);
