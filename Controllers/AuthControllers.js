@@ -35,23 +35,30 @@ module.exports.register = async (req, res, next) => {
     const { firstName, lastName, phoneNumber, password } = req.body;
     const username = phoneNumber; // Using phone number as a unique identifier for username
 
+    // Create a new user with assignedAgent set to null
     const user = await UserModel.create({
       firstName,
       lastName,
       phoneNumber,
       password,
       username,
+      assignedAgent: null, // Default to null (no agent assigned)
     });
-    const token = createToken(user._id);
-    const notification = `A new account has been created`;
 
+    // Create token
+    const token = createToken(user._id);
+
+    // Create a notification for account creation
+    const notification = `A new account has been created`;
     const newNotification = new Notification({
       type: "account creation",
       notification: notification,
     });
 
+    // Save the notification to the database
     await newNotification.save();
 
+    // Send the response with the created user and token
     res.cookie("jwt", token, {
       withCredentials: true,
       httpOnly: false,
@@ -59,6 +66,7 @@ module.exports.register = async (req, res, next) => {
       sameSite: "none",
       secure: true,
     });
+
     res.status(201).json({
       user: user._id,
       firstName: user.firstName,
@@ -68,7 +76,7 @@ module.exports.register = async (req, res, next) => {
     });
   } catch (err) {
     console.log(err);
-    const errors = handleErrors(err);
+    const errors = handleErrors(err); // Handle errors if any
     res.json({ errors, created: false });
   }
 };

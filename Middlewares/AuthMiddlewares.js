@@ -184,8 +184,32 @@ module.exports.submissions = async (req, res, next) => {
 
     if (token) {
       try {
+        // Decode the JWT token to get the logged-in user details
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const loggedInUser = await User.findById(decoded.id); // Use decoded.id for user ID
+
+        // Fetch all submissions and populate the user field
         const submissions = await Submission.find().populate("user");
-        res.json(submissions);
+
+        if (loggedInUser.role === "admin") {
+          // If the user is an admin, return all submissions
+          res.json(submissions);
+        } else if (loggedInUser.role === "agent") {
+          // If the user is an agent, filter the submissions by assignedAgent
+          const filteredSubmissions = submissions.filter((submission) => {
+            return (
+              submission.user.assignedAgent &&
+              submission.user.assignedAgent.toString() ===
+                loggedInUser._id.toString()
+            );
+          });
+          res.json(filteredSubmissions);
+        } else {
+          // If the role is neither admin nor agent
+          res.status(403).json({
+            message: "You are not authorized to view these submissions.",
+          });
+        }
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Error fetching submissions" });
@@ -333,20 +357,50 @@ module.exports.updateAccountDetails = async (req, res, next) => {
 module.exports.getUsers = async (req, res, next) => {
   try {
     const token = req.cookies.jwt;
-    if (token) {
-      try {
-        const users = await User.find();
-        res.json(users);
-      } catch (err) {
-        res.status(500).json({ message: err.message });
+    if (!token) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized access" });
+    }
+
+    try {
+      // Verify the token and extract user info
+      const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+      const userId = decodedToken.id;
+
+      // Fetch the logged-in user's details to check their role
+      const loggedInUser = await User.findById(userId).select("role");
+      if (!loggedInUser) {
+        return res.status(404).json({ message: "User not found" });
       }
-    } else {
-      res.status(401).json({ status: false, message: "Unauthorized access" });
-      next();
+
+      let users;
+
+      // Check if the logged-in user is an agent
+      if (loggedInUser.role === "agent") {
+        // Find users assigned to this agent
+        users = await User.find({ assignedAgent: userId }).populate(
+          "assignedAgent",
+          "firstName lastName username role"
+        );
+      } else if (loggedInUser.role === "admin") {
+        // Admin can view all users
+        users = await User.find().populate(
+          "assignedAgent",
+          "firstName lastName username role"
+        );
+      } else {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(users);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      res.status(500).json({ message: "Internal server error." });
     }
   } catch (err) {
-    console.error("Error Deleting Submission", err);
-    res.status(500).json({ error: "Internal server error." });
+    console.error("Error verifying token:", err);
+    res.status(500).json({ message: "Internal server error." });
   }
 };
 
@@ -462,12 +516,23 @@ module.exports.updateUser = async (req, res) => {
       }
 
       const { username } = req.params;
-      const { firstName, lastName, role, accountStatus } = req.body;
+      const { firstName, lastName, role, accountStatus, assignedAgent } =
+        req.body;
+
+      // Validate assignedAgent field if provided
+      if (assignedAgent) {
+        const agent = await User.findById(assignedAgent);
+        if (!agent || agent.role !== "agent") {
+          return res
+            .status(400)
+            .json({ status: false, message: "Invalid assigned agent ID" });
+        }
+      }
 
       // Update the user
       const updatedUser = await User.findOneAndUpdate(
         { username },
-        { firstName, lastName, role, accountStatus },
+        { firstName, lastName, role, accountStatus, assignedAgent },
         { new: true, runValidators: true }
       );
 
@@ -486,6 +551,7 @@ module.exports.updateUser = async (req, res) => {
           lastName: updatedUser.lastName,
           role: updatedUser.role,
           accountStatus: updatedUser.accountStatus,
+          assignedAgent: updatedUser.assignedAgent,
         },
       });
     });

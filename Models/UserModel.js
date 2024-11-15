@@ -49,8 +49,13 @@ const userSchema = new mongoose.Schema({
     enum: ["user", "agent", "admin"],
     default: "user",
   },
+  assignedAgent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
 });
 
+// Password hashing middleware
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
     return next();
@@ -65,6 +70,7 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+// Login method
 userSchema.statics.login = async function (phoneNumber, password) {
   const user = await this.findOne({ phoneNumber });
   if (user) {
