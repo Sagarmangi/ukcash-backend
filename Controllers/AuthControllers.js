@@ -48,15 +48,42 @@ module.exports.register = async (req, res, next) => {
     // Create token
     const token = createToken(user._id);
 
-    // Create a notification for account creation
-    const notification = `A new account has been created`;
-    const newNotification = new Notification({
+    // Create a notification for super admin and admin
+    const adminNotificationText = `A new account has been created`;
+    const adminNotification = new Notification({
       type: "account creation",
-      notification: notification,
+      notification: adminNotificationText,
     });
 
-    // Save the notification to the database
-    await newNotification.save();
+    // Save the notification
+    await adminNotification.save();
+
+    // Find all super admins and admins
+    const adminUsers = await UserModel.find({
+      role: { $in: ["super admin", "admin"] },
+    });
+
+    // Add the notification to all super admins and admins
+    await Promise.all(
+      adminUsers.map(async (adminUser) => {
+        adminUser.notifications.push(adminNotification._id);
+        await adminUser.save();
+      })
+    );
+
+    // Create a notification for the newly created user
+    const userNotificationText = `Your account is being approved.`;
+    const userNotification = new Notification({
+      type: "account creation",
+      notification: userNotificationText,
+    });
+
+    // Save the notification
+    await userNotification.save();
+
+    // Add the notification to the new user
+    user.notifications.push(userNotification._id);
+    await user.save();
 
     // Send the response with the created user and token
     res.cookie("jwt", token, {
