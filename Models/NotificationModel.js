@@ -3,15 +3,7 @@ const mongoose = require("mongoose");
 const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: [
-      "deposit",
-      "withdraw",
-      "account creation",
-      "account approval",
-      "role change",
-      "submission update",
-      "submission deleted",
-    ],
+    enum: ["deposit", "withdraw", "account creation"], // Define the types of notifications
     required: true,
   },
   notification: {

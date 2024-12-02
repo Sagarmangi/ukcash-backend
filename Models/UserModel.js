@@ -39,12 +39,6 @@ const userSchema = new mongoose.Schema({
       ref: "Submission",
     },
   ],
-  notifications: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Notification", // Reference to the Notification model
-    },
-  ],
   accountStatus: {
     type: String,
     enum: ["approved", "unapproved"],
@@ -52,7 +46,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["user", "agent", "admin", "super admin"],
+    enum: ["user", "agent", "admin"],
     default: "user",
   },
   assignedAgent: {
